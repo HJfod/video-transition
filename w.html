@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+	padding: 0px;
+	margin: 0px;
+}
+canvas {
+	width: 100%;
+	top: 0px;
+	left: 0px;
+	position: absolute;
+	background-color: rgba(0,0,0,0);
+	z-index: -5;
+}
+button {
+	
+}
+</style>
+</head>
+<body>
+<canvas id="c" width=1920 height=1080></canvas>
+<button onclick="reset()">reset</button>
+<button onclick="p?document.getElementById('p').innerHTML='stop':document.getElementById('p').innerHTML='play';p?p=0:p=1" id="p">play</button>
+<button onclick="(r>0)?document.getElementById('r').innerHTML='rec':document.getElementById('r').innerHTML='stop';(r>0)?r=0:r=1;if(r==0){dotheffmpeg()}" id="r">rec</button>
+<button onclick="empty()">empty</button>
+<script>
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const path = require("path");
+const fs = require("fs");
+const { exec } = require("child_process");
+
+let q = 300;
+let x = [];
+let s = 2.5;
+let a = 5;
+let p = 1;
+let r = 0;
+const d = path.join(__dirname, "/pics");
+
+let j = 0;
+while (q - j > 0){
+	x[j] = null;
+	
+	j++;
+}
+
+reset();
+
+function reset() {
+	ctx.clearRect(0,0,c.width,c.height);
+	let n = -Math.round(Math.random()*s*8);
+	for (let i in x){
+		n += (Math.random()-.5)*s*8;
+		x[i] = { p: n - 100, s: Math.round(Math.random())+1 };
+	}
+	ctx.fillStyle = "#00f";
+	ctx.fillRect(0,0,c.width,c.height);
+}
+
+function empty() {
+	fs.readdirSync(d).forEach((f) => {
+		fs.unlinkSync(path.join(d, `/${f}`));
+	});
+	console.log("emptied folder");
+}
+
+function dotheffmpeg() {
+	let o = path.join(__dirname, "/finished");
+	let l = btoa(Math.random()*Math.random()*Math.random()*Math.random());
+	exec(`ffmpeg -framerate 60 -i ${d}/%d.png ${o}/${l}.avi`, (error, stdout, stderr) => {
+		if (error) {
+			console.log(`error: ${error.message}`);
+			return;
+		}
+		if (stderr) {
+			console.log(`the cake is done`);
+		}
+		exec(`ffmpeg -i ${o}/${l}.avi ${o}/${l}.mp4`, (er,so,se) => {
+			if (er){
+				console.log(`err: ${er.message}`);
+				return;
+			}
+			if (se){
+				fs.readdirSync(o).forEach((f) => {
+					if (path.extname(f) === ".avi"){
+						fs.unlinkSync(path.join(o, `/${f}`));
+					}
+				});
+				console.log(`el convertedo`);
+			}
+		});
+	});
+}
+
+function draw() {
+	if (!p) {
+		ctx.strokeStyle = "#0f0";
+		ctx.fillStyle = "#0f0";
+		ctx.beginPath();
+		ctx.moveTo(0,0);
+		let e = 0;
+		for (let i in x){
+			if (x[i].p < c.width){
+				x[i].s += (Math.random()-.5);
+				if (x[i].s < 1) x[i].s = 1;
+				if (x[i].s > s) x[i].s = s;
+				x[i].p += x[i].s + a;
+			}
+			e += x[i].p;
+			ctx.lineTo(x[i].p,i*c.height/q);
+		}
+		ctx.lineTo(e/q,c.height);
+		ctx.lineTo(0,c.height);
+		ctx.fill();
+		ctx.stroke();
+		if (r > 0) {
+			document.title = r;
+			b = c.toDataURL().replace(/^data:image\/\w+;base64,/, "");
+			fs.writeFileSync(path.join(__dirname + `/pics/${r}.png`), Buffer.from(b, 'base64'));
+			r++;
+		}
+	}
+	
+	requestAnimationFrame(draw);
+}
+draw();
+
+/*
+	
+	ffmpeg -framerate 60 -i %d.png out.avi
+	
+	ffmpeg -i out.avi out.mp4
+	
+*/
+</script>
+</body>
+</html>
